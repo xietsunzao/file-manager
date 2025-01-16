@@ -135,45 +135,45 @@
     <div class="rounded-lg border h-[calc(100vh-8rem)]" :class="[
       isDark ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50 border-gray-200'
     ]" @contextmenu.prevent>
-      <!-- Right Panel Header with Breadcrumbs -->
-      <div class="p-4 border-b" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
-        <div v-if="selectedFolder" class="flex items-center gap-2">
-          <div class="flex items-center gap-2 text-sm">
-            <template v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
-              <!-- Breadcrumb Item -->
+      <!-- Right content section -->
+      <div class="flex-1">
+        <!-- Content header with breadcrumbs and search -->
+        <div class="flex items-center justify-between p-4 border-b" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
+          <!-- Breadcrumbs -->
+          <div class="flex items-center gap-2">
+            <template v-for="(crumb, index) in breadcrumbs" :key="index">
               <span 
-                class="cursor-pointer hover:text-primary-500 transition-colors"
-                :class="[
-                  isDark ? 'text-gray-300' : 'text-gray-600',
-                  index === breadcrumbs.length - 1 ? 'font-medium' : ''
-                ]"
-                @click="selectFolder(crumb)"
+                class="cursor-pointer hover:text-primary-500"
+                @click="handleBreadcrumbClick(crumb)"
               >
                 {{ crumb.name }}
               </span>
-              
-              <!-- Separator -->
-              <UIcon
+              <UIcon 
                 v-if="index < breadcrumbs.length - 1"
-                name="i-heroicons-chevron-right"
-                class="w-4 h-4"
-                :class="isDark ? 'text-gray-600' : 'text-gray-400'"
+                name="i-heroicons-chevron-right" 
+                class="w-4 h-4 opacity-50"
               />
             </template>
           </div>
-        </div>
-        <h2 
-          v-else 
-          class="text-lg font-semibold"
-          :class="isDark ? 'text-white' : 'text-gray-900'"
-        >
-          Select a folder
-        </h2>
-      </div>
 
-      <!-- Scrollable Content Area -->
-      <div class="overflow-y-auto h-[calc(100%-4rem)]">
-        <!-- Column Headers - Fixed -->
+          <!-- Search Input -->
+          <div class="relative w-64">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search files and folders..."
+              class="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-primary-500 focus:bg-transparent transition-colors"
+              :class="isDark ? 'text-gray-200' : 'text-gray-700'"
+            />
+            <UIcon
+              :name="isSearching ? 'i-heroicons-arrow-path' : 'i-heroicons-magnifying-glass'"
+              class="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 opacity-50"
+              :class="{ 'animate-spin': isSearching }"
+            />
+          </div>
+        </div>
+
+        <!-- Column Headers -->
         <div class="sticky top-0 bg-inherit border-b px-4 py-2" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
           <div class="flex items-center text-sm font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
             <div 
@@ -181,27 +181,33 @@
               @click="handleSort('name')"
             >
               Name
-              <span class="text-xs transition-transform">{{ getSortIndicator('name') }}</span>
+              <span class="text-xs" v-if="sortConfig.key === 'name'">
+                {{ getSortIndicator('name') }}
+              </span>
             </div>
             <div 
               class="w-32 text-right cursor-pointer hover:text-primary-500 flex items-center justify-end gap-1"
               @click="handleSort('size')"
             >
               Size
-              <span class="text-xs transition-transform">{{ getSortIndicator('size') }}</span>
+              <span class="text-xs" v-if="sortConfig.key === 'size'">
+                {{ getSortIndicator('size') }}
+              </span>
             </div>
             <div 
               class="w-48 text-right cursor-pointer hover:text-primary-500 flex items-center justify-end gap-1"
               @click="handleSort('date')"
             >
               Date Modified
-              <span class="text-xs transition-transform">{{ getSortIndicator('date') }}</span>
+              <span class="text-xs" v-if="sortConfig.key === 'date'">
+                {{ getSortIndicator('date') }}
+              </span>
             </div>
           </div>
         </div>
 
         <!-- Content Area -->
-        <div class="p-2">
+        <div class="flex-1 overflow-y-auto">
           <!-- Loading State -->
           <div v-if="loading" class="space-y-2">
             <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
@@ -234,7 +240,7 @@
           <div v-else class="divide-y" :class="isDark ? 'divide-gray-800' : 'divide-gray-200'">
             <!-- Sorted Folders -->
             <div
-              v-for="folder in sortedItems.folders"
+              v-for="folder in sortedContent.folders"
               :key="`folder-${folder.id}`"
               class="flex items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer group"
               @click="handleFolderClick(folder)"
@@ -258,7 +264,7 @@
 
             <!-- Sorted Files -->
             <div
-              v-for="file in sortedItems.files"
+              v-for="file in sortedContent.files"
               :key="`file-${file.id}`"
               class="flex items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer group"
               @click="handleFileClick(file)"
@@ -340,202 +346,202 @@
           </div>
         </UModal>
       </div>
-    </div>
 
-    <!-- Create Folder Modal -->
-    <UModal v-model="showCreateModal">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6">
-              Create New Folder
-            </h3>
-          </div>
-        </template>
-
-        <form @submit.prevent="handleCreateFolder" class="space-y-4">
-          <UFormGroup label="Folder Name" required :error="modalError">
-            <UInput
-              v-model="newFolderName"
-              placeholder="Enter folder name"
-              :error="!!modalError"
-              @keyup="modalError = validateFolderName(newFolderName)"
-            />
-          </UFormGroup>
-
-          <UFormGroup label="Parent Folder">
-            <USelect
-              v-model="selectedParentId"
-              :options="folderOptions"
-              option-attribute="name"
-              value-attribute="id"
-              placeholder="Select parent folder (optional)"
-              searchable
-              :clearable="true"
-            />
-          </UFormGroup>
-        </form>
-
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton 
-              color="gray" 
-              variant="outline"
-              :class="[
-                isDark 
-                  ? 'border-gray-700 hover:bg-gray-800' 
-                  : 'border-gray-200 hover:bg-gray-50'
-              ]"
-              @click="showCreateModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton 
-              color="primary" 
-              :loading="loading" 
-              :disabled="!!modalError || !newFolderName.trim()"
-              @click="handleCreateFolder"
-            >
-              Create
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-
-    <!-- Context Menu with improved size -->
-    <UContextMenu 
-      v-model="isContextMenuOpen" 
-      :virtual-element="virtualElement"
-      :popper="{ arrow: true, placement: 'right-start' }"
-      class="context-menu"
-    >
-      <div class="p-2 min-w-[200px]">
-        <div class="px-3 py-2 text-sm font-medium text-gray-400 border-b border-gray-700 mb-2">
-          {{ selectedContextFolder?.name }}
-        </div>
-        <UButton
-          block
-          color="gray"
-          variant="ghost"
-          class="justify-start px-3 py-2 text-base w-full mb-1"
-          @click="handleStartRename"
-        >
-          <template #leading>
-            <UIcon name="i-heroicons-pencil-square" class="w-5 h-5" />
+      <!-- Create Folder Modal -->
+      <UModal v-model="showCreateModal">
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold leading-6">
+                Create New Folder
+              </h3>
+            </div>
           </template>
-          <span class="ml-2">Rename</span>
-        </UButton>
-        <UButton
-          block
-          color="red"
-          variant="ghost"
-          class="justify-start px-3 py-2 text-base w-full"
-          @click="showDeleteConfirm"
-        >
-          <template #leading>
-            <UIcon name="i-heroicons-trash" class="w-5 h-5" />
+
+          <form @submit.prevent="handleCreateFolder" class="space-y-4">
+            <UFormGroup label="Folder Name" required :error="modalError">
+              <UInput
+                v-model="newFolderName"
+                placeholder="Enter folder name"
+                :error="!!modalError"
+                @keyup="modalError = validateFolderName(newFolderName)"
+              />
+            </UFormGroup>
+
+            <UFormGroup label="Parent Folder">
+              <USelect
+                v-model="selectedParentId"
+                :options="folderOptions"
+                option-attribute="name"
+                value-attribute="id"
+                placeholder="Select parent folder (optional)"
+                searchable
+                :clearable="true"
+              />
+            </UFormGroup>
+          </form>
+
+          <template #footer>
+            <div class="flex justify-end space-x-4">
+              <UButton 
+                color="gray" 
+                variant="outline"
+                :class="[
+                  isDark 
+                    ? 'border-gray-700 hover:bg-gray-800' 
+                    : 'border-gray-200 hover:bg-gray-50'
+                ]"
+                @click="showCreateModal = false"
+              >
+                Cancel
+              </UButton>
+              <UButton 
+                color="primary" 
+                :loading="loading" 
+                :disabled="!!modalError || !newFolderName.trim()"
+                @click="handleCreateFolder"
+              >
+                Create
+              </UButton>
+            </div>
           </template>
-          <span class="ml-2">Delete</span>
-        </UButton>
-      </div>
-    </UContextMenu>
+        </UCard>
+      </UModal>
 
-    <!-- Delete Confirmation Modal -->
-    <UModal v-model="showDeleteModal">
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h3 class="text-base font-semibold leading-6">
-              Delete Folder
-            </h3>
+      <!-- Context Menu with improved size -->
+      <UContextMenu 
+        v-model="isContextMenuOpen" 
+        :virtual-element="virtualElement"
+        :popper="{ arrow: true, placement: 'right-start' }"
+        class="context-menu"
+      >
+        <div class="p-2 min-w-[200px]">
+          <div class="px-3 py-2 text-sm font-medium text-gray-400 border-b border-gray-700 mb-2">
+            {{ selectedContextFolder?.name }}
           </div>
-        </template>
-
-        <p class="text-sm text-gray-500 dark:text-gray-400">
-          Are you sure you want to delete "{{ selectedContextFolder?.name }}"? This action cannot be undone.
-        </p>
-
-        <template #footer>
-          <div class="flex justify-end space-x-4">
-            <UButton 
-              color="gray" 
-              variant="outline" 
-              @click="showDeleteModal = false"
-            >
-              Cancel
-            </UButton>
-            <UButton 
-              color="red" 
-              variant="solid" 
-              :loading="isDeleting"
-              @click="handleDelete"
-            >
-              Delete
-            </UButton>
-          </div>
-        </template>
-      </UCard>
-    </UModal>
-
-    <!-- Rename Folder Modal -->
-    <UModal v-model="showRenameModal">
-      <div class="p-4">
-        <h3 class="text-lg font-semibold mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
-          Rename Folder
-        </h3>
-        
-        <UFormGroup label="New Name" :class="isDark ? 'text-gray-200' : 'text-gray-700'">
-          <UInput
-            v-model="editedName"
-            :class="isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'"
-            placeholder="Enter new folder name"
-            @keyup.enter="handleSaveRenameWithReload"
-          />
-        </UFormGroup>
-
-        <p v-if="renameError" class="mt-2 text-sm text-red-500">
-          {{ renameError }}
-        </p>
-
-        <div class="flex justify-end gap-2 mt-4">
           <UButton
+            block
             color="gray"
-            variant="solid"
-            :loading="isRenaming"
-            @click="cancelRename"
+            variant="ghost"
+            class="justify-start px-3 py-2 text-base w-full mb-1"
+            @click="handleStartRename"
           >
-            Cancel
+            <template #leading>
+              <UIcon name="i-heroicons-pencil-square" class="w-5 h-5" />
+            </template>
+            <span class="ml-2">Rename</span>
           </UButton>
           <UButton
-            color="primary"
-            variant="solid"
-            :loading="isRenaming"
-            @click="handleSaveRenameWithReload"
+            block
+            color="red"
+            variant="ghost"
+            class="justify-start px-3 py-2 text-base w-full"
+            @click="showDeleteConfirm"
           >
-            Save
+            <template #leading>
+              <UIcon name="i-heroicons-trash" class="w-5 h-5" />
+            </template>
+            <span class="ml-2">Delete</span>
           </UButton>
         </div>
-      </div>
-    </UModal>
+      </UContextMenu>
 
-    <!-- File Context Menu with virtual element -->
-    <UContextMenu 
-      v-model="fileContextMenu.isOpen" 
-      :items="fileContextMenuItems"
-      :virtual-element="{
-        getBoundingClientRect: () => ({
-          width: 0,
-          height: 0,
-          top: fileContextMenu.y,
-          right: fileContextMenu.x,
-          bottom: fileContextMenu.y,
-          left: fileContextMenu.x,
-          x: fileContextMenu.x,
-          y: fileContextMenu.y,
-        })
-      }"
-    />
+      <!-- Delete Confirmation Modal -->
+      <UModal v-model="showDeleteModal">
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold leading-6">
+                Delete Folder
+              </h3>
+            </div>
+          </template>
+
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete "{{ selectedContextFolder?.name }}"? This action cannot be undone.
+          </p>
+
+          <template #footer>
+            <div class="flex justify-end space-x-4">
+              <UButton 
+                color="gray" 
+                variant="outline" 
+                @click="showDeleteModal = false"
+              >
+                Cancel
+              </UButton>
+              <UButton 
+                color="red" 
+                variant="solid" 
+                :loading="isDeleting"
+                @click="handleDelete"
+              >
+                Delete
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </UModal>
+
+      <!-- Rename Folder Modal -->
+      <UModal v-model="showRenameModal">
+        <div class="p-4">
+          <h3 class="text-lg font-semibold mb-4" :class="isDark ? 'text-white' : 'text-gray-900'">
+            Rename Folder
+          </h3>
+          
+          <UFormGroup label="New Name" :class="isDark ? 'text-gray-200' : 'text-gray-700'">
+            <UInput
+              v-model="editedName"
+              :class="isDark ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'"
+              placeholder="Enter new folder name"
+              @keyup.enter="handleSaveRenameWithReload"
+            />
+          </UFormGroup>
+
+          <p v-if="renameError" class="mt-2 text-sm text-red-500">
+            {{ renameError }}
+          </p>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <UButton
+              color="gray"
+              variant="solid"
+              :loading="isRenaming"
+              @click="cancelRename"
+            >
+              Cancel
+            </UButton>
+            <UButton
+              color="primary"
+              variant="solid"
+              :loading="isRenaming"
+              @click="handleSaveRenameWithReload"
+            >
+              Save
+            </UButton>
+          </div>
+        </div>
+      </UModal>
+
+      <!-- File Context Menu with virtual element -->
+      <UContextMenu 
+        v-model="fileContextMenu.isOpen" 
+        :items="fileContextMenuItems"
+        :virtual-element="{
+          getBoundingClientRect: () => ({
+            width: 0,
+            height: 0,
+            top: fileContextMenu.y,
+            right: fileContextMenu.x,
+            bottom: fileContextMenu.y,
+            left: fileContextMenu.x,
+            x: fileContextMenu.x,
+            y: fileContextMenu.y,
+          })
+        }"
+      />
+    </div>
   </div>
 </template>
   
@@ -548,7 +554,7 @@ import { useRenameFolder } from '~/composables/useRenameFolder'
 import { ref, computed } from 'vue'
 import type { File } from '~/types/file'
 import { fileApi } from '~/services/file.api'
-import { useSorting } from '~/composables/useSorting'
+import { useSearch } from '~/composables/useSearch'
 
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
@@ -602,6 +608,11 @@ const handleStartRename = () => {
     startRename(selectedContextFolder.value)
     isContextMenuOpen.value = false
   }
+}
+
+// Breadcrumb click handler
+const handleBreadcrumbClick = (crumb: Folder) => {
+  selectFolder
 }
 
   
@@ -1100,14 +1111,56 @@ const subfolders = computed(() => {
     ?.children || []
 })
 
-// Use the sorting composable
-const { sortContent, handleSort, getSortIndicator } = useSorting()
+// Add sorting state
+const sortConfig = ref<{
+  key: 'name' | 'size' | 'date' | null
+  direction: 'asc' | 'desc'
+}>({
+  key: null,
+  direction: 'asc'
+})
 
-// Update the computed property for sorted content
-const sortedItems = computed(() => ({
-  folders: sortContent(subfolders.value),
-  files: sortContent(fileList.value)
-}))
+// Sort function for both folders and files
+const sortedContent = computed(() => {
+  // If searching, return search results
+  if (searchQuery.value.trim()) {
+    return {
+      folders: searchResults.value?.folders || [],
+      files: searchResults.value?.files || []
+    }
+  }
+
+  // Otherwise return normal folder contents
+  return {
+    folders: selectedFolder.value ? subfolders.value : [],
+    files: fileList.value
+  }
+})
+
+// Handle column header click
+const handleSort = (key: 'name' | 'size' | 'date') => {
+  if (sortConfig.value.key === key) {
+    // Toggle direction if clicking the same column
+    sortConfig.value.direction = sortConfig.value.direction === 'asc' ? 'desc' : 'asc'
+  } else {
+    // Set new sorting column with default ascending direction
+    sortConfig.value = {
+      key,
+      direction: 'asc'
+    }
+  }
+}
+
+// Helper function to show sort indicator
+const getSortIndicator = (key: 'name' | 'size' | 'date') => {
+  if (sortConfig.value.key !== key) return ''
+  return sortConfig.value.direction === 'asc' ? '↑' : '↓'
+}
+
+// Initialize search
+const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
+
+// Update folder selection to reset search
 </script>
 
 <style scoped>

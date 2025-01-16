@@ -1,4 +1,6 @@
 import type { Folder } from '~/types/folder'
+import type { SearchResults } from '~/composables/useSearch'
+import type { File } from '~/types/file'
 
 interface ApiResponse<T> {
   success: boolean;
@@ -131,4 +133,27 @@ export const folderApi = {
     if (error.value) throw error.value
     return data.value
   }
+}
+
+export const searchApi = {
+    async search(query: string): Promise<SearchResults> {
+        const config = useRuntimeConfig()
+        const { data: response } = await useFetch<ApiResponse<SearchResults>>(`/search?q=${encodeURIComponent(query)}`, {
+            baseURL: config.public.apiBaseUrl,
+            key: `search-${query}`,
+            server: false,
+        })
+
+        if (!response.value?.success) {
+            return { folders: [], files: [] }
+        }
+
+        const result = response.value.data
+        return {
+            folders: result.folders,
+            files: result.files.map(file => ({
+                ...file,
+            }))
+        }
+    }
 } 
