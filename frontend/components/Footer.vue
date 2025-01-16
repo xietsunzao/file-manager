@@ -1,29 +1,19 @@
 <template>
   <footer :class="[
-    'fixed bottom-0 w-full border-t transition-colors',
-    isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+    'py-2 border-t transition-colors',
+    isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-white border-gray-200'
   ]">
     <div class="container mx-auto px-6">
-      <div class="flex h-10 items-center justify-between">
-        <span :class="isDark ? 'text-gray-400' : 'text-gray-600'">
-          © 2024 Folder Explorer
+      <div class="flex h-8 items-center justify-between">
+        <span class="text-sm" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
+          © 2024 Jefri Maruli H
         </span>
         <div class="flex gap-4">
           <a 
-            href="#" 
-            :class="[
-              'text-sm transition-colors',
-              isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
-            ]"
-          >
-            Documentation
-          </a>
-          <a 
-            href="#" 
-            :class="[
-              'text-sm transition-colors',
-              isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'
-            ]"
+            href="https://github.com/xietsunzao/file-manager"
+            target="_blank"
+            class="text-sm transition-colors"
+            :class="isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'"
           >
             GitHub
           </a>

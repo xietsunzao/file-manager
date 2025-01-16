@@ -6,7 +6,7 @@
     <div class="container mx-auto px-6">
       <div class="flex h-16 items-center justify-between">
         <h1 class="text-xl font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">
-          Folder Explorer
+           File Explorer
         </h1>
         <ClientOnly>
           <UButton

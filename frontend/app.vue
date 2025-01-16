@@ -1,26 +1,20 @@
 <template>
   <div :class="[
-    'min-h-screen transition-colors duration-300',
+    'min-h-screen flex flex-col transition-colors duration-300',
     isDark ? 'dark bg-gray-950' : 'bg-gray-100'
   ]">
-    <UContainer class="py-8">
-      <header class="mb-8">
-        <div class="flex items-center justify-between">
-          <h1 class="text-2xl font-bold" :class="isDark ? 'text-white' : 'text-gray-900'">
-            Folder Explorer
-          </h1>
-          <UButton
-            :icon="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"
-            color="gray"
-            variant="ghost"
-            @click="toggleColorMode"
-          />
-        </div>
-      </header>
-
+    <!-- Navbar -->
+    <Navbar />
+    
+    <!-- Main Content with padding -->
+    <main class="flex-1 container mx-auto px-6 py-8">
       <NuxtPage />
-    </UContainer>
+    </main>
 
+    <!-- Footer -->
+    <Footer />
+    
+    <!-- Notifications -->
     <UNotifications />
   </div>
 </template>
@@ -28,11 +22,6 @@
 <script setup lang="ts">
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
-
-const toggleColorMode = () => {
-  colorMode.preference = isDark.value ? 'light' : 'dark'
-  colorMode.value = isDark.value ? 'light' : 'dark'
-}
 
 onMounted(() => {
   const savedMode = localStorage.getItem('color-mode')
@@ -46,3 +35,21 @@ onMounted(() => {
   }
 })
 </script>
+
+<style>
+/* Ensure the layout takes full height */
+html, body, #__nuxt {
+  height: 100%;
+}
+
+/* Add space for fixed footer */
+main {
+  min-height: calc(100vh - 4rem - 2.5rem); /* Subtract navbar and footer heights */
+  padding-bottom: 2.5rem; /* Footer height */
+}
+
+/* Dark mode overrides */
+.dark {
+  color-scheme: dark;
+}
+</style>
