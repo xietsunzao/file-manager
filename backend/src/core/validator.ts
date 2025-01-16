@@ -9,12 +9,6 @@ interface ValidationError {
     details?: Record<string, any>;
 }
 
-interface ValidationResponse {
-    success: boolean;
-    message: string;
-    errors?: ValidationError[];
-}
-
 export class Validator {
     static validate<T>(schema: z.ZodSchema<T>, data: unknown): T {
         try {
