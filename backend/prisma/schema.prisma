@@ -1,0 +1,39 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Folder {
+  id         Int      @id @default(autoincrement())
+  name       String
+  parent_id  Int?
+  parent     Folder?  @relation("FolderToFolder", fields: [parent_id], references: [id], onDelete: Cascade)
+  children   Folder[] @relation("FolderToFolder")
+  files      File[]   @relation("FolderToFile")
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model File {
+  id          Int      @id @default(autoincrement())
+  name        String
+  type        String   // MIME type of the file
+  size        Int      // File size in bytes
+  folder_id   Int
+  folder      Folder   @relation("FolderToFile", fields: [folder_id], references: [id], onDelete: Cascade)
+  path        String   // Physical path or storage reference
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([folder_id])
+}
