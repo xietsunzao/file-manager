@@ -32,4 +32,13 @@ export class FileValidation {
   static readonly getFileById = z.object({
     id: z.number().positive("File ID must be a positive number")
   });
+
+  static readonly renameFile = z.object({
+    id: z.number().int().positive(),
+    name: z.string().min(1).max(255)
+  });
+
+  static readonly deleteFile = z.object({
+    id: z.number().int().positive()
+  });
 } 

@@ -11,6 +11,7 @@ export class FileController {
         this.createFile = this.createFile.bind(this)
         this.updateFile = this.updateFile.bind(this)
         this.deleteFile = this.deleteFile.bind(this)
+        this.renameFile = this.renameFile.bind(this)
     }
 
     getFiles = async (req: Request, res: Response) => {
@@ -73,10 +74,27 @@ export class FileController {
     deleteFile = async (req: Request, res: Response) => {
         try {
             const id = parseInt(req.params.id)
-            const file = await this.service.deleteFile(id)
+            await this.service.deleteFile(id)
+
             res.json({
                 success: true,
-                message: 'File deleted successfully',
+                message: 'File deleted successfully'
+            })
+        } catch (error) {
+            throw error
+        }
+    }
+
+    renameFile = async (req: Request, res: Response) => {
+        try {
+            const id = parseInt(req.params.id)
+            const { name } = req.body
+
+            const file = await this.service.renameFile(id, name)
+
+            res.json({
+                success: true,
+                message: 'File renamed successfully',
                 data: file
             })
         } catch (error) {

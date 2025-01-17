@@ -9,5 +9,6 @@ router.get('/:id', fileController.getFileById)
 router.post('/', fileController.createFile)
 router.patch('/:id', fileController.updateFile)
 router.delete('/:id', fileController.deleteFile)
+router.patch('/:id/rename', fileController.renameFile)
 
 export default router 
