@@ -2,6 +2,8 @@
 
 A modern file management system built with Vue.js and Express.js, featuring a clean and intuitive interface for organizing and managing files and folders.
 
+![Image](https://github.com/user-attachments/assets/aa763c97-d205-483a-8c1b-598525c138bd)
+
 ## Features
 
 - 📁 Hierarchical folder structure
