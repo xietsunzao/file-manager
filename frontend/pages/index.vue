@@ -156,21 +156,48 @@
             </template>
           </div>
 
-          <!-- Search Input -->
-          <div class="relative w-64">
-            <input
+          <!-- Search and Add Files Group -->
+          <div class="flex items-center gap-3">
+            <UInput
               v-model="searchQuery"
-              type="text"
+              icon="i-heroicons-magnifying-glass"
+              color="gray"
+              variant="outline"
               placeholder="Search files and folders..."
-              class="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-primary-500 focus:bg-transparent transition-colors"
-              :class="isDark ? 'text-gray-200' : 'text-gray-700'"
+              :loading="isSearching"
             />
-            <UIcon
-              :name="isSearching ? 'i-heroicons-arrow-path' : 'i-heroicons-magnifying-glass'"
-              class="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-4 h-4 opacity-50"
-              :class="{ 'animate-spin': isSearching }"
-            />
+            
+            <UButton
+              v-if="selectedFolder"
+              color="primary"
+              icon="i-heroicons-plus"
+              @click="triggerFileInput"
+              :loading="isUploading"
+              :disabled="isUploading"
+            >
+              Add Files
+            </UButton>
+
+            <input
+              ref="fileInput"
+              type="file"
+              multiple
+              class="hidden"
+              @change="handleFileSelect"
+            >
           </div>
+        </div>
+
+        <!-- Upload Progress -->
+        <div v-if="isUploading" class="mb-4">
+          <div class="text-sm mb-2">
+            Uploading... {{ uploadProgress }}%
+          </div>
+          <UProgress
+            :value="uploadProgress"
+            color="primary"
+            size="xs"
+          />
         </div>
 
         <!-- Column Headers - Fixed -->
@@ -641,6 +668,11 @@
           </template>
         </UCard>
       </UModal>
+
+      <FileUpload
+        v-if="selectedFolder"
+        @upload-complete="refreshFiles"
+      />
     </div>
   </div>
 </template>
@@ -656,6 +688,7 @@ import type { File } from '~/types/file'
 import { fileApi } from '~/services/file.api'
 import { useSearch } from '~/composables/useSearch'
 import { onClickOutside } from '@vueuse/core'
+import { useFiles } from '~/composables/useFiles'
 
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
@@ -1380,6 +1413,39 @@ onMounted(() => {
     })
   }
 })
+
+const { loadFiles } = useFiles()
+
+const refreshFiles = async () => {
+  if (selectedFolder.value) {
+    await loadFiles(selectedFolder.value.id)
+  }
+}
+
+const { isUploading, uploadProgress, uploadFile } = useFileUpload()
+
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const handleFileSelect = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length || !selectedFolder.value) return
+
+  try {
+    for (const file of input.files) {
+      await uploadFile(file, selectedFolder.value.id)
+    }
+    
+    // Clear the input
+    input.value = ''
+    
+    // Refresh files
+    await loadFiles(selectedFolder.value.id)
+  } catch (error) {
+    console.error('Upload failed:', error)
+  }
+}
 </script>
 
 <style scoped>
