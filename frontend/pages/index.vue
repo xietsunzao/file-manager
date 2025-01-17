@@ -1,11 +1,11 @@
 <template>
   <div class="grid grid-cols-[300px_1fr] gap-6">
     <!-- Left Panel with fixed height and scrollbar -->
-    <div class="rounded-lg border h-[calc(100vh-8rem)]" :class="[
+    <div class="rounded-lg border h-[calc(100vh-8rem)] flex flex-col" :class="[
       isDark ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50 border-gray-200'
     ]" @contextmenu.prevent>
       <!-- Header - Fixed -->
-      <div class="p-4 border-b" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
+      <div class="p-4 border-b flex-shrink-0" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold" :class="isDark ? 'text-white' : 'text-gray-900'">Folders</h2>
           <div class="flex gap-2">
@@ -30,7 +30,7 @@
       </div>
       
       <!-- Scrollable Content Area -->
-      <div class="overflow-y-auto h-[calc(100%-4rem)]">
+      <div class="flex-1 overflow-y-auto">
         <div class="p-2">
           <!-- Loading State -->
           <div v-if="loading" class="space-y-2 p-2">
@@ -132,13 +132,13 @@
     </div>
 
     <!-- Right Panel with matching height -->
-    <div class="rounded-lg border h-[calc(100vh-8rem)]" :class="[
+    <div class="rounded-lg border h-[calc(100vh-8rem)] flex flex-col" :class="[
       isDark ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50 border-gray-200'
     ]" @contextmenu.prevent>
       <!-- Right content section -->
-      <div class="flex-1">
-        <!-- Content header with breadcrumbs and search -->
-        <div class="flex items-center justify-between p-4 border-b" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
+      <div class="flex flex-col h-full">
+        <!-- Content header with breadcrumbs and search - Fixed -->
+        <div class="flex items-center justify-between p-4 border-b flex-shrink-0" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
           <!-- Breadcrumbs -->
           <div class="flex items-center gap-2">
             <template v-for="(crumb, index) in breadcrumbs" :key="index">
@@ -173,8 +173,8 @@
           </div>
         </div>
 
-        <!-- Column Headers -->
-        <div class="sticky top-0 bg-inherit border-b px-4 py-2" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
+        <!-- Column Headers - Fixed -->
+        <div class="sticky top-0 bg-inherit border-b px-4 py-2 flex-shrink-0" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
           <div class="flex items-center text-sm font-medium" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
             <div 
               class="flex-1 cursor-pointer hover:text-primary-500 flex items-center gap-1"
@@ -206,7 +206,7 @@
           </div>
         </div>
 
-        <!-- Content Area -->
+        <!-- Content Area - Scrollable -->
         <div class="flex-1 overflow-y-auto">
           <!-- Loading State -->
           <div v-if="loading" class="space-y-2">
@@ -1158,7 +1158,7 @@ const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
 /* Modern scrollbar styling */
 .overflow-y-auto {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 }
 
 .overflow-y-auto::-webkit-scrollbar {
@@ -1170,17 +1170,26 @@ const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
 }
 
 .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(156, 163, 175, 0.3);
   border-radius: 3px;
+  transition: background-color 0.2s;
 }
 
-/* Dark/Light mode adjustments */
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.5);
+}
+
+/* Dark mode scrollbar adjustments */
+:deep(.dark) .overflow-y-auto {
+  scrollbar-color: rgba(156, 163, 175, 0.2) transparent;
+}
+
 :deep(.dark) .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(156, 163, 175, 0.2);
 }
 
-:deep(.light) .overflow-y-auto::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.1);
+:deep(.dark) .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.3);
 }
 
 /* Add this if you want to ensure the date info doesn't wrap awkwardly */
