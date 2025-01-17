@@ -525,23 +525,122 @@
         </div>
       </UModal>
 
-      <!-- File Context Menu with virtual element -->
+      <!-- Add file context menu -->
       <UContextMenu 
         v-model="fileContextMenu.isOpen" 
-        :items="fileContextMenuItems"
-        :virtual-element="{
-          getBoundingClientRect: () => ({
-            width: 0,
-            height: 0,
-            top: fileContextMenu.y,
-            right: fileContextMenu.x,
-            bottom: fileContextMenu.y,
-            left: fileContextMenu.x,
-            x: fileContextMenu.x,
-            y: fileContextMenu.y,
-          })
-        }"
-      />
+        :virtual-element="fileContextMenu.virtualElement"
+        :popper="{ arrow: true, placement: 'right-start' }"
+        class="context-menu"
+      >
+        <div class="p-2 min-w-[200px]">
+          <div class="px-3 py-2 text-sm font-medium text-gray-400 border-b border-gray-700 mb-2">
+            {{ selectedFile?.name }}
+          </div>
+          <UButton
+            block
+            color="gray"
+            variant="ghost"
+            class="justify-start px-3 py-2 text-base w-full mb-1"
+            @click="handleFileRename"
+          >
+            <template #leading>
+              <UIcon name="i-heroicons-pencil-square" class="w-5 h-5" />
+            </template>
+            <span class="ml-2">Rename</span>
+          </UButton>
+          <UButton
+            block
+            color="red"
+            variant="ghost"
+            class="justify-start px-3 py-2 text-base w-full"
+            @click="handleFileDelete"
+          >
+            <template #leading>
+              <UIcon name="i-heroicons-trash" class="w-5 h-5" />
+            </template>
+            <span class="ml-2">Delete</span>
+          </UButton>
+        </div>
+      </UContextMenu>
+
+      <!-- Add file rename modal -->
+      <UModal v-model="showFileRenameModal">
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold leading-6">
+                Rename File
+              </h3>
+            </div>
+          </template>
+
+          <form @submit.prevent="handleSaveFileRename" class="space-y-4">
+            <UFormGroup label="File Name" required :error="fileRenameError">
+              <UInput
+                v-model="editedFileName"
+                placeholder="Enter file name"
+                :error="!!fileRenameError"
+              />
+            </UFormGroup>
+          </form>
+
+          <template #footer>
+            <div class="flex justify-end space-x-4">
+              <UButton 
+                color="gray" 
+                variant="outline" 
+                @click="showFileRenameModal = false"
+              >
+                Cancel
+              </UButton>
+              <UButton 
+                color="primary" 
+                :loading="isFileRenaming"
+                @click="handleSaveFileRename"
+              >
+                Save
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </UModal>
+
+      <!-- Add file delete confirmation modal -->
+      <UModal v-model="showFileDeleteModal">
+        <UCard>
+          <template #header>
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-semibold leading-6">
+                Delete File
+              </h3>
+            </div>
+          </template>
+
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete "{{ selectedFile?.name }}"? This action cannot be undone.
+          </p>
+
+          <template #footer>
+            <div class="flex justify-end space-x-4">
+              <UButton 
+                color="gray" 
+                variant="outline" 
+                @click="showFileDeleteModal = false"
+              >
+                Cancel
+              </UButton>
+              <UButton 
+                color="red" 
+                variant="solid" 
+                :loading="isFileDeleting"
+                @click="handleConfirmFileDelete"
+              >
+                Delete
+              </UButton>
+            </div>
+          </template>
+        </UCard>
+      </UModal>
     </div>
   </div>
 </template>
@@ -872,8 +971,7 @@ const handleSaveRenameWithReload = () => handleSaveRename(reloadFolders)
 // File context menu
 const fileContextMenu = ref({
   isOpen: false,
-  x: 0,
-  y: 0,
+  virtualElement: null as any
 })
 
 const fileList = ref<File[]>([])
@@ -960,17 +1058,6 @@ const handleDeleteFile = async (file: File) => {
       color: 'red',
       icon: 'i-heroicons-x-circle'
     })
-  }
-}
-
-// File context menu handlers
-const onFileContextMenu = (e: MouseEvent, file: File) => {
-  e.preventDefault()
-  selectedFile.value = file
-  fileContextMenu.value = {
-    isOpen: true,
-    x: e.clientX,
-    y: e.clientY,
   }
 }
 
@@ -1173,6 +1260,123 @@ onMounted(() => {
   if (process.client) { // Check if we're in browser environment
     onClickOutside(containerRef, () => {
       isContextMenuOpen.value = false
+    })
+  }
+})
+
+// Add these refs
+const showFileRenameModal = ref(false)
+const showFileDeleteModal = ref(false)
+const editedFileName = ref('')
+const fileRenameError = ref('')
+const isFileRenaming = ref(false)
+const isFileDeleting = ref(false)
+
+// Add file context menu handler
+const onFileContextMenu = (event: MouseEvent, file: File) => {
+  event.preventDefault()
+  event.stopPropagation()
+  
+  selectedFile.value = file
+  fileContextMenu.value.virtualElement = {
+    getBoundingClientRect: () => ({
+      width: 0,
+      height: 0,
+      top: event.clientY,
+      right: event.clientX,
+      bottom: event.clientY,
+      left: event.clientX,
+      x: event.clientX,
+      y: event.clientY,
+    })
+  }
+  fileContextMenu.value.isOpen = true
+}
+
+// Add rename handlers
+const handleFileRename = () => {
+  if (!selectedFile.value) return
+  
+  editedFileName.value = selectedFile.value.name
+  fileRenameError.value = ''
+  showFileRenameModal.value = true
+  fileContextMenu.value.isOpen = false
+}
+
+const handleSaveFileRename = async () => {
+  if (!selectedFile.value || !editedFileName.value.trim()) return
+  
+  isFileRenaming.value = true
+  try {
+    await fileApi.updateFile(selectedFile.value.id, editedFileName.value.trim())
+    
+    // Reload files to get updated list
+    if (selectedFolder.value) {
+      const response = await fileApi.getFiles(selectedFolder.value.id)
+      fileList.value = response
+    }
+    
+    showFileRenameModal.value = false
+    toast.add({
+      title: 'Success',
+      description: 'File renamed successfully',
+      color: 'green',
+      icon: 'i-heroicons-check-circle'
+    })
+  } catch (error) {
+    fileRenameError.value = error instanceof Error ? error.message : 'Failed to rename file'
+    toast.add({
+      title: 'Error',
+      description: fileRenameError.value,
+      color: 'red',
+      icon: 'i-heroicons-x-circle'
+    })
+  } finally {
+    isFileRenaming.value = false
+  }
+}
+
+// Add delete handlers
+const handleFileDelete = () => {
+  showFileDeleteModal.value = true
+  fileContextMenu.value.isOpen = false
+}
+
+const handleConfirmFileDelete = async () => {
+  if (!selectedFile.value) return
+  
+  isFileDeleting.value = true
+  try {
+    await fileApi.deleteFile(selectedFile.value.id)
+    
+    // Remove file from list
+    fileList.value = fileList.value.filter(f => f.id !== selectedFile.value?.id)
+    
+    showFileDeleteModal.value = false
+    toast.add({
+      title: 'Success',
+      description: 'File deleted successfully',
+      color: 'green',
+      icon: 'i-heroicons-check-circle'
+    })
+  } catch (error) {
+    toast.add({
+      title: 'Error',
+      description: error instanceof Error ? error.message : 'Failed to delete file',
+      color: 'red',
+      icon: 'i-heroicons-x-circle'
+    })
+  } finally {
+    isFileDeleting.value = false
+  }
+}
+
+// Update click outside handler to close both context menus
+onMounted(() => {
+  if (process.client) {
+    onClickOutside(containerRef, () => {
+      isContextMenuOpen.value = false
+      fileContextMenu.value.isOpen = false
     })
   }
 })
