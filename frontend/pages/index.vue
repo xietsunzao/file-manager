@@ -364,8 +364,35 @@ const handleStartRename = () => {
 }
 
 // Breadcrumb click handler
-const handleBreadcrumbClick = (crumb: Folder) => {
-  selectFolder
+const handleBreadcrumbClick = async (crumb: FolderTree) => {
+  // Reset search if active
+  if (searchQuery.value) {
+    resetSearch()
+  }
+  
+  // Select the folder
+  await selectFolder(crumb)
+  
+  // Find the folder in the tree and ensure the path is open
+  const openFolderPath = (folders: FolderTree[], targetId: number): boolean => {
+    for (const folder of folders) {
+      if (folder.id === targetId) {
+        return true
+      }
+      
+      if (folder.children?.length) {
+        const found = openFolderPath(folder.children, targetId)
+        if (found) {
+          folder.isOpen = true
+          return true
+        }
+      }
+    }
+    return false
+  }
+  
+  // Open all parent folders in the path
+  openFolderPath(allFolders.value, crumb.id)
 }
 
   
