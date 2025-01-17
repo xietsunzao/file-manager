@@ -12,15 +12,17 @@ export class FileController {
         this.updateFile = this.updateFile.bind(this)
         this.deleteFile = this.deleteFile.bind(this)
         this.renameFile = this.renameFile.bind(this)
+        this.uploadFile = this.uploadFile.bind(this)
     }
 
     getFiles = async (req: Request, res: Response) => {
         try {
-            const folder_id = req.params.folder_id ? parseInt(req.params.folder_id) : undefined
-            const files = await this.service.getFiles(folder_id)
+            const folderId = req.params.folderId ? parseInt(req.params.folderId) : undefined
+            const files = await this.service.getFiles(folderId)
+            
             res.json({
                 success: true,
-                message: folder_id 
+                message: folderId 
                     ? 'Files retrieved successfully for folder' 
                     : 'All files retrieved successfully',
                 data: files
@@ -98,6 +100,58 @@ export class FileController {
                 data: file
             })
         } catch (error) {
+            throw error
+        }
+    }
+
+    uploadFile = async (req: Request, res: Response) => {
+        try {
+            const files = req.files as Express.Multer.File[]
+            const { folder_id } = req.body
+
+            if (!files || files.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No files uploaded',
+                    errors: [{
+                        field: 'files',
+                        message: 'At least one file is required'
+                    }]
+                })
+            }
+
+            if (!folder_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Folder ID is required',
+                    errors: [{
+                        field: 'folder_id',
+                        message: 'Folder ID is required'
+                    }]
+                })
+            }
+
+            const savedFiles = await Promise.all(files.map(file => 
+                this.service.createFile({
+                    name: file.originalname,
+                    type: file.mimetype,
+                    size: file.size,
+                    folder: {
+                        connect: {
+                            id: parseInt(folder_id)
+                        }
+                    },
+                    path: file.path
+                })
+            ))
+
+            res.status(201).json({
+                success: true,
+                message: 'Files uploaded successfully',
+                data: savedFiles
+            })
+        } catch (error) {
+            console.error('Upload error:', error)
             throw error
         }
     }
