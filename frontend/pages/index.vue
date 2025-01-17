@@ -624,13 +624,25 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 }
 
-// Lifecycle hooks
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
+// Remove duplicate onUnmounted declarations and combine cleanup logic
 onUnmounted(() => {
+  // Remove event listeners
   document.removeEventListener('click', handleClickOutside)
+  
+  // Reset state
+  selectedContextFolder.value = null
+  editingFolder.value = null
+  selectedFile.value = null
+  fileList.value = []
+  
+  // Clear modals
+  showCreateModal.value = false
+  showDeleteModal.value = false
+  showRenameModal.value = false
+  showPreview.value = false
+  
+  // Reset search
+  resetSearch()
 })
 
 // Initialize data
@@ -738,11 +750,6 @@ const transformToFolderTree = (folder: Folder): FolderTree => {
   }
 }
 
-// Update folder selection handler
-const handleFolderSelect = (folder: Folder) => {
-  selectFolder(transformToFolderTree(folder))
-}
-
 // Update the calculate level function
 const calculateFolderLevel = (folder: Folder): number => {
   let level = 0
@@ -757,20 +764,6 @@ const calculateFolderLevel = (folder: Folder): number => {
   
   return level
 }
-
-// Optional: Close context menu when clicking outside
-onMounted(() => {
-  document.addEventListener('click', () => {
-    isContextMenuOpen.value = false
-  })
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', () => {
-    isContextMenuOpen.value = false
-  })
-})
-
 // Delete state
 const showDeleteModal = ref(false)
 const isDeleting = ref(false)
@@ -834,25 +827,6 @@ const {
 } = useRenameFolder()
 
 const handleSaveRenameWithReload = () => handleSaveRename(reloadFolders)
-
-const contextMenuItems = [
-  {
-    label: 'Rename',
-    icon: 'i-heroicons-pencil-square',
-    onClick: handleStartRename
-  },
-  {
-    label: 'Delete',
-    icon: 'i-heroicons-trash',
-    onClick: showDeleteConfirm,
-    class: 'text-red-500'
-  }
-]
-
-// Handle rename
-const handleRename = async () => {
-  await handleSaveRename(reloadFolders)
-}
 
 // File context menu
 const fileContextMenu = ref({
@@ -1024,16 +998,6 @@ const handleFileUpload = async (files: FileList) => {
   }
 }
 
-// File context menu handler
-const handleFileContextMenu = (event: { x: number, y: number, file: File }) => {
-  selectedFile.value = event.file
-  fileContextMenu.value = {
-    isOpen: true,
-    x: event.x,
-    y: event.y,
-  }
-}
-
 // Utility functions
 const getFileIcon = (type: string) => {
   if (type.startsWith('image/')) return 'i-heroicons-photo'
@@ -1166,13 +1130,12 @@ const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
 <style scoped>
 /* Modern scrollbar styling */
 .overflow-y-auto {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent; /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
-/* Webkit browsers (Chrome, Safari, Edge) */
 .overflow-y-auto::-webkit-scrollbar {
-  width: 6px; /* Thin scrollbar */
+  width: 6px;
 }
 
 .overflow-y-auto::-webkit-scrollbar-track {
@@ -1184,31 +1147,13 @@ const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
   border-radius: 3px;
 }
 
-/* Dark mode adjustments */
-:deep(.dark) .overflow-y-auto {
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
+/* Dark/Light mode adjustments */
 :deep(.dark) .overflow-y-auto::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Light mode adjustments */
-:deep(.light) .overflow-y-auto {
-  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-}
-
 :deep(.light) .overflow-y-auto::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Hover effects */
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-:deep(.light) .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.2);
 }
 
 /* Add this if you want to ensure the date info doesn't wrap awkwardly */
