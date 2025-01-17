@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-[300px_1fr] gap-6">
+  <div ref="containerRef" class="grid grid-cols-[300px_1fr] gap-6">
     <!-- Left Panel with fixed height and scrollbar -->
     <div class="rounded-lg border h-[calc(100vh-8rem)] flex flex-col" :class="[
       isDark ? 'bg-gray-800/50 border-gray-800' : 'bg-gray-50 border-gray-200'
@@ -244,6 +244,7 @@
               :key="`folder-${folder.id}`"
               class="flex items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer group"
               @click="handleFolderClick(folder)"
+              @contextmenu.prevent="(e) => onFolderContextMenu(e, folder)"
             >
               <div class="flex-1 flex items-center gap-3">
                 <UIcon 
@@ -551,10 +552,11 @@ import { useFolders } from '~/composables/useFolders'
 import { useMouse, useWindowScroll } from '@vueuse/core'
 import { folderApi } from '~/services/api'
 import { useRenameFolder } from '~/composables/useRenameFolder'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { File } from '~/types/file'
 import { fileApi } from '~/services/file.api'
 import { useSearch } from '~/composables/useSearch'
+import { onClickOutside } from '@vueuse/core'
 
 const colorMode = useColorMode()
 const isDark = computed(() => colorMode.value === 'dark')
@@ -584,21 +586,33 @@ const selectedContextFolder = ref<FolderTree | null>(null)
 const editingFolder = ref<FolderTree | null>(null)
 
 // Handle context menu
-function onFolderContextMenu(event: MouseEvent, folder: FolderTree) {
+const onFolderContextMenu = (event: MouseEvent, folder: Folder) => {
   event.preventDefault()
   event.stopPropagation()
   
-  const top = unref(y) - unref(windowY)
-  const left = unref(x)
+  // Transform the folder to FolderTree format
+  const folderTree = transformToFolderTree(folder)
+  
+  // Calculate position relative to viewport
+  const top = event.clientY
+  const left = event.clientX
 
-  virtualElement.value.getBoundingClientRect = () => ({
-    width: 0,   
-    height: 0,
-    top,
-    left
-  })
+  // Update virtual element position
+  virtualElement.value = {
+    getBoundingClientRect: () => ({
+      width: 0,
+      height: 0,
+      top,
+      right: left,
+      bottom: top,
+      left,
+      x: left,
+      y: top,
+    })
+  }
 
-  selectedContextFolder.value = folder
+  // Set the selected folder and open the menu
+  selectedContextFolder.value = folderTree
   isContextMenuOpen.value = true
 }
 
@@ -773,7 +787,7 @@ const transformToFolderTree = (folder: Folder): FolderTree => {
     ...folder,
     level: calculateFolderLevel(folder),
     isOpen: false,
-    children: folder.children?.map(child => transformToFolderTree(child))
+    children: folder.children?.map(child => transformToFolderTree(child)) || []
   }
 }
 
@@ -1151,7 +1165,17 @@ const getSortIndicator = (key: 'name' | 'size' | 'date') => {
 // Initialize search
 const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
 
-// Update folder selection to reset search
+// Add ref for the container
+const containerRef = ref<HTMLElement | null>(null)
+
+// Move click outside logic to onMounted
+onMounted(() => {
+  if (process.client) { // Check if we're in browser environment
+    onClickOutside(containerRef, () => {
+      isContextMenuOpen.value = false
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -1338,5 +1362,16 @@ const { searchQuery, searchResults, isSearching, resetSearch } = useSearch()
 
 .sort-indicator-anim {
   animation: sortRotate 0.2s ease;
+}
+
+/* Add these styles to ensure context menu appears above other elements */
+:deep(.context-menu) {
+  z-index: 1000;
+}
+
+/* Ensure the context menu has proper background in dark mode */
+:deep(.dark .context-menu) {
+  background-color: rgb(31, 41, 55);
+  border-color: rgb(55, 65, 81);
 }
 </style>
