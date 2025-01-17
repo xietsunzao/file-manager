@@ -1433,9 +1433,17 @@ const handleFileSelect = async (event: Event) => {
   if (!input.files?.length || !selectedFolder.value) return
 
   try {
-    for (const file of input.files) {
-      await uploadFile(file, selectedFolder.value.id)
-    }
+    const formData = new FormData()
+    
+    // Add each file to the formData
+    Array.from(input.files).forEach(file => {
+      formData.append('files', file)
+    })
+    
+    // Add the folder ID
+    formData.append('folder_id', selectedFolder.value.id.toString())
+
+    await uploadFile(formData)
     
     // Clear the input
     input.value = ''
