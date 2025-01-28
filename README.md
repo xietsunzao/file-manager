@@ -1,4 +1,4 @@
-# Infokes Technical Test Project
+# File Explorer
 
 A modern file management system built with Vue.js and Express.js, featuring a clean and intuitive interface for organizing and managing files and folders.
 
